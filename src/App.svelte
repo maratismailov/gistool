@@ -5,7 +5,7 @@
 	// const url = getContext('url')
 	const url = location.href.includes("localhost")
 		? "http://localhost:8000"
-		: "https://gnss.ml/gistool_backend";
+		: "https://gnss.ml/api";
 	let fullOutput;
 	let map;
 	let center = [42.8746, 74.5698];
