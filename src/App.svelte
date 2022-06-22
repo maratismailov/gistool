@@ -1,18 +1,23 @@
 <script>
 	import { onMount } from "svelte";
 	import { getContext } from "svelte";
+	import { each } from "svelte/internal";
 
 	// const url = getContext('url')
 	const url = location.href.includes("localhost")
 		? "http://localhost:8000"
 		: "https://gnss.ml/api";
 	let fullOutput;
+	let projectName = '';
+	let allObjects;
+	let parsedObjects = [];
 	let map;
 	let center = [42.8746, 74.5698];
 	let zoom = 12;
 	let objects_layer;
 	let oldObjectsLayer;
 	let activeObject;
+	let dbStatus = false
 	const osmUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 	const osmAttr =
 		'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -92,7 +97,6 @@
 				};
 				objects_layer.addData(newObject);
 				objectsToSave.push(newObject);
-				console.log(objectsToSave);
 			});
 		};
 		createMap();
@@ -110,9 +114,6 @@
 		if (object.type !== "Feature") {
 			object.crs = { type: "name", properties: { name: "EPSG:4326" } };
 		}
-		console.log(object);
-
-		console.log(JSON.stringify(object));
 		const string = JSON.stringify(object);
 		const post = await fetch(url + "/save_object?data=" + string).then(
 			(response) => response.json()
@@ -121,41 +122,30 @@
 	const getGnssPoints = async () => {
 		activeObject = null;
 		oldObjectsLayer.clearLayers();
-		const allObjects = await fetch(url + "/get_gnss_points").then(
+		allObjects = await fetch(url + "/get_gnss_points").then(
 			(response) => response.json()
 		);
+		
 		allObjects.forEach((elem) => {
-			let toAdd = JSON.parse(elem.geom);
-			toAdd.properties = { name: elem.name };
-			oldObjectsLayer.addData(toAdd);
+			parsedObjects = [...parsedObjects, JSON.parse('[' + elem + ']')]
+			// parsedObjects.push(JSON.parse('[' + elem + ']'))
+			console.log(JSON.parse('[' + elem + ']'))
+			// let toAdd = JSON.parse(elem.geom);
+			// console.log(toAdd)
+			// toAdd.properties = { name: elem.name };
+			// oldObjectsLayer.addData(toAdd);
 		});
+		console.log(parsedObjects)
 	};
 	const submitForm = async () => {
 		event.preventDefault();
-		console.log(fullOutput)
 		const dataArray = new FormData();
 		dataArray.append("file", fullOutput[0]);
-		console.log(dataArray)
-		for(var pair of dataArray.entries()) {
-			console.log(pair[0]+', '+pair[1]);
-			}
-		// fetch(url + '/upload_full_output', {
-		//   method: "GET",
-		//   headers: [["Content-Type", "multipart/form-data"]],
-		//   body: dataArray
-		// })
-		//   .then(response => {
-		//     // Successfully uploaded
-		//   })
-		//   .catch(error => {
-		//     // Upload failed
-		//   });
+		dataArray.append('project_name', projectName)
 		const upload = await fetch(url + "/upload_full_output", {
 			method: "POST",
 			body: dataArray,
-		}).then((response) => {
-			console.log(response.json())
-		});
+		})
 	};
 	const getAllObjects = async () => {
 		activeObject = null;
@@ -169,12 +159,30 @@
 			oldObjectsLayer.addData(toAdd);
 		});
 	};
+	const resetDatabase = () => {
+		fetch(url + '/recreate_db')
+	}
+	const checkForDatabase = async () => {
+		dbStatus = await fetch(url + '/check_for_database').then((response) => response.json())
+	}
 </script>
 
 <div style="height: 69vh" class="map" id="map">
 	<slot />
 </div>
 
+<div class="controls-row">
+ {#if dbStatus}
+	<p>
+		database not ready
+	</p>
+ {/if}
+ {#if dbStatus == false}
+ <p>
+	 database is ready
+ </p>
+{/if}
+</div>
 <div style="margin-bottom: 225px;">
 	<div class="controls-row">
 		{#if activeObject}
@@ -205,8 +213,11 @@
 		<div>
 			<form on:submit={submitForm}>
 				<input type="file" bind:files={fullOutput} />
+				<input type="text" bind:value={projectName} />
 				<br />
-				<input type="submit" />
+				{#if projectName}
+					<input type="submit" />
+				{/if}
 			</form>
 		</div>
 		<div class="controls-row">
@@ -214,6 +225,44 @@
 				Get all objects
 			</button>
 		</div>
+		<div class="controls-row">
+			<button class="pure-material-button-contained" on:click={resetDatabase}>
+				reset database
+			</button>
+		</div>
+		<div class="controls-row">
+			<button class="pure-material-button-contained" on:click={checkForDatabase}>
+				check for db
+			</button>
+		</div>
+		{#if parsedObjects}
+			<div>
+				{#each parsedObjects as project}
+					<div style="margin-top: 26px;">
+						{project[0].project_name}
+					</div>
+					<div style="margin-left: 8px;">
+						{#each project as point}
+							<div>
+								{point.name}
+							</div>
+							<div>
+								details:
+								<div style="margin-left: 8px;">
+									{point.details}
+								</div>
+							</div>
+							<div>
+								geoJSON:
+								<div style="margin-left: 8px;">
+									{point.geojson}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
 </div>
 
