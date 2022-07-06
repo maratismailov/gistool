@@ -165,6 +165,16 @@
 	const checkForDatabase = async () => {
 		dbStatus = await fetch(url + '/check_for_database').then((response) => response.json())
 	}
+	const showOnMap = points => {
+		console.log(points)
+		points.forEach(elem =>{
+			console.log(JSON.parse(elem.geojson))
+			let toAdd = JSON.parse(elem.geojson);
+			// console.log(toAdd)
+			toAdd.properties = { name: elem.name };
+			oldObjectsLayer.addData(toAdd);
+		})
+	}
 </script>
 
 <div style="height: 69vh" class="map" id="map">
@@ -240,12 +250,17 @@
 				{#each parsedObjects as project}
 					<div style="margin-top: 26px;">
 						{project[0].project_name}
+						<div class="controls-row">
+							<button class="pure-material-button-contained" on:click={() => showOnMap(project)}>
+								show on map
+							</button>
+						</div>
 					</div>
 					<div style="margin-left: 8px;">
 						{#each project as point}
 							<div>
 								{point.name}
-							</div>
+							</div>1
 							<div>
 								details:
 								<div style="margin-left: 8px;">
