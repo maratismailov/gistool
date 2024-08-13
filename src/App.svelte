@@ -6,7 +6,7 @@
 	// const url = getContext('url')
 	const url = location.href.includes("localhost")
 		? "http://localhost:8000"
-		: "https://gnss.ml/api";
+		: "https://gistool.line.pm/api";
 	let fullOutput;
 	let projectName = '';
 	let allObjects;
